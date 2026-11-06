@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: dynamicbuilds
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "from app.database import Base,engine; import app.models; Base.metadata.create_all(bind=engine)" && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dynamicbuilds-db
+          property: connectionString
+      - key: BASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SECURE_COOKIES
+        value: "true"
+databases:
+  - name: dynamicbuilds-db
+    databaseName: dynamicbuilds
+    user: dynamicbuilds

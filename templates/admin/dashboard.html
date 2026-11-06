@@ -1,0 +1,377 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard | DynamicBuilds</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body class="admin-body">
+
+<header class="admin-top">
+    <a class="brand" href="/">
+        <span class="brand-mark">D</span>
+        <span>Dynamic<span class="brand-accent">Builds</span></span>
+    </a>
+
+    <form method="post" action="/admin/logout">
+        <button class="btn btn-outline-dark">Log out</button>
+    </form>
+</header>
+
+<main class="admin-main">
+
+    <!-- Dashboard Heading -->
+    <div class="admin-heading">
+        <div>
+            <span class="eyebrow">CONTROL CENTRE</span>
+            <h1>Website dashboard</h1>
+        </div>
+
+        <a class="btn btn-green" href="/admin/enquiries.csv">
+            Export enquiries CSV
+        </a>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+
+        <div class="stat">
+            <small>Total enquiries</small>
+            <strong>{{ total }}</strong>
+        </div>
+
+        {% for s,n in counts.items() %}
+        <div class="stat">
+            <small>{{ s }}</small>
+            <strong>{{ n }}</strong>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    <!-- Enquiries Section -->
+    <section class="admin-section" id="enquiries">
+
+        <div class="admin-section-head">
+            <h2>Recent enquiries</h2>
+            <span>{{ enquiries|length }} shown</span>
+        </div>
+
+        {% for e in enquiries %}
+
+        <details class="enquiry-row">
+
+            <summary>
+                <span>
+                    <b>{{ e.customer_name }}</b>
+                    <small>
+                        {{ e.reference }} · {{ e.service }} ·
+                        {{ e.created_at.strftime('%d %b %Y') }}
+                    </small>
+                </span>
+
+                <span class="status status-{{ e.status|lower|replace(' ','-') }}">
+                    {{ e.status }}
+                </span>
+            </summary>
+
+            <div class="enquiry-details">
+
+                <p>
+                    <b>Email:</b> {{ e.email }} ·
+                    <b>Phone:</b> {{ e.phone }}
+                </p>
+
+                <p>
+                    <b>Location:</b> {{ e.location }} ·
+                    <b>Type:</b> {{ e.project_type }} ·
+                    <b>Budget:</b> {{ e.budget or 'Not provided' }}
+                </p>
+
+                <p>{{ e.description }}</p>
+
+                {% if e.attachment_path %}
+                <p>
+                    <a href="{{ e.attachment_path }}"
+                       target="_blank"
+                       rel="noopener">
+                        View attachment
+                    </a>
+                </p>
+                {% endif %}
+
+                <!-- Update Enquiry -->
+                <form method="post"
+                      action="/admin/enquiries/{{ e.id }}"
+                      class="admin-update">
+
+                    <label>
+                        Status
+                        <select name="status">
+                            {% for s in ['New','Contacted','In Progress','Completed'] %}
+                            <option {% if e.status == s %}selected{% endif %}>
+                                {{ s }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label>
+                        Internal notes
+                        <textarea name="admin_notes" rows="2">{{ e.admin_notes }}</textarea>
+                    </label>
+
+                    <button class="btn btn-green">
+                        Save update
+                    </button>
+
+                </form>
+
+                <!-- Delete Enquiry -->
+                <form method="post"
+                      action="/admin/enquiries/{{ e.id }}/delete"
+                      onsubmit="return confirm('Delete this enquiry permanently?')">
+
+                    <button class="danger-link">
+                        Delete enquiry
+                    </button>
+
+                </form>
+
+            </div>
+        </details>
+
+        {% else %}
+        <p>No enquiries yet.</p>
+        {% endfor %}
+
+    </section>
+
+    <!-- Project Portfolio -->
+    <section class="admin-section" id="projects">
+
+        <div class="admin-section-head">
+            <h2>Project portfolio</h2>
+        </div>
+
+        <!-- Add New Project Form -->
+        <form class="admin-project-form"
+              method="post"
+              action="/admin/projects"
+              enctype="multipart/form-data">
+
+            <label>
+                Title
+                <input name="title" required maxlength="160">
+            </label>
+
+            <label>
+                Category
+                <input name="category"
+                       required
+                       maxlength="80"
+                       placeholder="Residential Buildings">
+            </label>
+
+            <label>
+                Description
+                <textarea name="description" required></textarea>
+            </label>
+
+            <label>
+                Location
+                <input name="location">
+            </label>
+
+            <!-- Project Image Upload -->
+            <label>
+                Project Image (JPG, PNG, WEBP — Max 8 MB)
+
+                <input
+                    type="file"
+                    name="image"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+            </label>
+
+            <button class="btn btn-green">
+                Add draft project
+            </button>
+
+        </form>
+
+        <!-- Existing Projects List -->
+        {% for p in projects %}
+
+        <div class="project-admin-row">
+
+            <span>
+
+                <!-- Project Image Preview -->
+                {% if p.image_path %}
+                <img
+                    src="{{ p.image_path }}"
+                    alt="{{ p.title }}"
+                    style="width:100px;height:75px;object-fit:cover;border-radius:8px;margin-bottom:8px;">
+                {% endif %}
+
+                <b>{{ p.title }}</b>
+
+                <small>
+                    {{ p.category }} ·
+                    {% if p.is_published %}
+                        Published
+                    {% else %}
+                        Draft
+                    {% endif %}
+                    ·
+                    {% if p.is_illustrative %}
+                        Illustrative
+                    {% else %}
+                        Company project
+                    {% endif %}
+                </small>
+
+            </span>
+
+            <!-- Project Actions -->
+            <div>
+
+                <!-- Edit Button -->
+                <button
+                    type="button"
+                    class="btn btn-green"
+                    onclick="document.getElementById('edit-project-{{ p.id }}').open = true">
+
+                    Edit
+
+                </button>
+
+                <!-- Publish / Unpublish -->
+                <form method="post"
+                      action="/admin/projects/{{ p.id }}/publish">
+
+                    <button class="btn btn-outline-dark">
+                        {% if p.is_published %}
+                            Unpublish
+                        {% else %}
+                            Publish
+                        {% endif %}
+                    </button>
+
+                </form>
+
+                <!-- Delete Project -->
+                <form method="post"
+                      action="/admin/projects/{{ p.id }}/delete"
+                      onsubmit="return confirm('Delete this project?')">
+
+                    <button class="danger-link">
+                        Delete
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <!-- EDIT PROJECT FORM -->
+        <details id="edit-project-{{ p.id }}"
+                 class="admin-edit-project">
+
+            <summary>
+                Edit {{ p.title }}
+            </summary>
+
+            <form
+                class="admin-project-form"
+                method="post"
+                action="/admin/projects/{{ p.id }}/edit"
+                enctype="multipart/form-data">
+
+                <!-- Project Title -->
+                <label>
+                    Project Title
+                    <input
+                        name="title"
+                        value="{{ p.title }}"
+                        required
+                        maxlength="160">
+                </label>
+
+                <!-- Category -->
+                <label>
+                    Category
+                    <input
+                        name="category"
+                        value="{{ p.category }}"
+                        required
+                        maxlength="80">
+                </label>
+
+                <!-- Description -->
+                <label>
+                    Description
+                    <textarea name="description" required>{{ p.description }}</textarea>
+                </label>
+
+                <!-- Location -->
+                <label>
+                    Location
+                    <input
+                        name="location"
+                        value="{{ p.location or '' }}">
+                </label>
+
+                <!-- Current Image Preview -->
+                {% if p.image_path %}
+                <div>
+                    <p><b>Current Project Image</b></p>
+
+                    <img
+                        src="{{ p.image_path }}"
+                        alt="{{ p.title }}"
+                        style="width:180px;height:120px;object-fit:cover;border-radius:8px;">
+                </div>
+                {% endif %}
+
+                <!-- Replace Image -->
+                <label>
+                    Replace Project Image (Optional)
+
+                    <input
+                        type="file"
+                        name="image"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                </label>
+
+                <!-- Save Changes -->
+                <button type="submit" class="btn btn-green">
+                    Save Changes
+                </button>
+
+            </form>
+
+        </details>
+
+        {% else %}
+        <p>No project records yet.</p>
+        {% endfor %}
+
+    </section>
+
+    <!-- Footer -->
+    <p class="admin-footnote">
+        Secure setup: create the first administrator with
+        <code>python create_admin.py</code>.
+        Never use a shared or default password.
+    </p>
+
+</main>
+
+</body>
+</html>
